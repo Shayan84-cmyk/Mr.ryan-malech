@@ -65,6 +65,53 @@
     .footer{margin-top:26px;text-align:center;color:var(--muted);font-size:.9rem}
     /* small helper */
     .k,v{display:block}
+
+.cta {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent); /* Assuming '--accent' is a defined CSS variable */
+  color: #fff;
+  font-weight: 600;
+  margin-top: 10px;
+  /* Add a smooth transition for the hover effect */
+  transition: background 0.3s ease;
+}
+
+/* Define the styles that apply when the user hovers over the button */
+.cta:hover {
+  background: var(--accent-hover, #0056b3); /* Change the background color on hover, with a fallback color */
+}
+/* ===== DARK MODE ===== */
+body.dark {
+  background: #020617;
+  color: #e5e7eb;
+}
+
+body.dark .card {
+  background: #020617;
+  border: 1px solid #1e293b;
+  box-shadow: none;
+}
+
+body.dark .meta {
+  color: #9ca3af;
+}
+
+body.dark .title p {
+  color: #cbd5f5;
+}
+
+body.dark .photo {
+  background: #020617;
+}
+
+body.dark ul li {
+  color: #e5e7eb;
+}
+
+
   </style>
 </head>
 <body>
@@ -110,6 +157,7 @@
 
           <h2 style="margin-top:14px">Office hours</h2>
           <p class="meta">Mon to Fri — 1:15pm to 3:40pm (room 207). </p>
+          <button id="themeToggle" class="cta">Dark Mode</button>
 
           
 
@@ -138,60 +186,124 @@
 
  
 
-  <script>
-      const popup = document.getElementById('popupOverlay');
 
-      popup.addEventListener('click', () => {
-      popup.style.animation = 'fadeOut 0.4s ease forwards';
-      setTimeout(() => popup.remove(), 400);
-    });
-    document.addEventListener('keydown', function(e){
-      if(e.key === 'e' || e.key === 'E'){
-        const about = document.getElementById('about');
-        const newText = prompt('Edit About intro:', about.textContent);
-        if(newText !== null) about.textContent = newText;
-      }
-    });
+   <script>
+/* ================= POPUP ================= */
+const popup = document.getElementById('popupOverlay');
+popup.addEventListener('click', () => {
+  popup.style.animation = 'fadeOut 0.4s ease forwards';
+  setTimeout(() => popup.remove(), 400);
+});
 
-        document.addEventListener('keydown', function(e){
-      if(e.key === 'p' || e.key === 'P'){
-        const phone = document.getElementById('phone');
-        const newText = prompt('Edit About phone:', phone.textContent);
-        if(newText !== null) phone.textContent = newText;
-      }
-    });
-  </script>
-  <script>
-    // Handle photo upload + drag & drop
-    const uploadInput = document.getElementById('photoUpload');
-    const dropZone = document.getElementById('dropZone');
-    const displayPhoto = document.getElementById('displayPhoto');
+/* ================= ADMIN SYSTEM ================= */
+const ADMIN_PIN = "2026";
+let isAdmin = false;
 
-    dropZone.addEventListener('click', () => uploadInput.click());
+function requireAdmin() {
+  if (isAdmin) return true;
+  const pin = prompt("🔐 Enter Admin PIN:");
+  if (pin === ADMIN_PIN) {
+    isAdmin = true;
+    return true;
+  }
+  alert("❌ Wrong PIN");
+  return false;
+}
 
-    uploadInput.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if(file) displayPhoto.src = URL.createObjectURL(file);
-    });
+/* ================= ELEMENTS ================= */
+const about = document.getElementById("about");
+const phone = document.getElementById("phone");
+const themeToggle = document.getElementById("themeToggle");
+const dropZone = document.getElementById("dropZone");
+const uploadInput = document.getElementById("photoUpload");
+const displayPhoto = document.getElementById("displayPhoto");
 
-    dropZone.addEventListener('dragover', e => {
-      e.preventDefault();
-      dropZone.style.border = "2px dashed #2563eb";
-    });
+/* ================= SAVE SYSTEM ================= */
+function saveData() {
+  localStorage.setItem("about", about.textContent);
+  localStorage.setItem("phone", phone.textContent);
+  localStorage.setItem("dark", document.body.classList.contains("dark"));
+}
 
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.style.border = "none";
-    });
+function saveImage(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem("photo", reader.result);
+  };
+  reader.readAsDataURL(file);
+}
 
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.style.border = "none";
-      const file = e.dataTransfer.files[0];
-      if(file && file.type.startsWith("image/")){
-        displayPhoto.src = URL.createObjectURL(file);
-      }
-    });
-  </script>
+function loadData() {
+  if (localStorage.getItem("about"))
+    about.textContent = localStorage.getItem("about");
+
+  if (localStorage.getItem("phone"))
+    phone.textContent = localStorage.getItem("phone");
+
+  if (localStorage.getItem("photo"))
+    displayPhoto.src = localStorage.getItem("photo");
+
+  if (localStorage.getItem("dark") === "true")
+    document.body.classList.add("dark");
+}
+
+/* ================= TEXT EDITING ================= */
+document.addEventListener("keydown", e => {
+  if ((e.key === "e" || e.key === "E") && requireAdmin()) {
+    const t = prompt("Edit About text:", about.textContent);
+    if (t !== null) {
+      about.textContent = t;
+      saveData();
+    }
+  }
+
+  if ((e.key === "p" || e.key === "P") && requireAdmin()) {
+    const t = prompt("Edit Phone number:", phone.textContent);
+    if (t !== null) {
+      phone.textContent = t;
+      saveData();
+    }
+  }
+});
+
+/* ================= IMAGE UPLOAD ================= */
+dropZone.addEventListener("click", () => {
+  if (requireAdmin()) uploadInput.click();
+});
+
+uploadInput.addEventListener("change", e => {
+  if (!requireAdmin()) return;
+  const file = e.target.files[0];
+  if (file) {
+    displayPhoto.src = URL.createObjectURL(file);
+    saveImage(file);
+  }
+});
+
+dropZone.addEventListener("dragover", e => e.preventDefault());
+
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  if (!requireAdmin()) return;
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) {
+    displayPhoto.src = URL.createObjectURL(file);
+    saveImage(file);
+  }
+});
+
+/* ================= DARK MODE ================= */
+themeToggle.addEventListener("click", () => {
+  if (!requireAdmin()) return;
+  document.body.classList.toggle("dark");
+  saveData();
+});
+
+/* ================= LOAD ON START ================= */
+loadData();
+</script>
+
+
 </body>
 </html>
 
